@@ -440,7 +440,7 @@ public transient int numb = 100;
 	private Object readResolve() {
 		return INSTANCE;
 	}
-	~~~
+~~~
 	 　     
 ﻿ 　     
 - 가비지 컬렉터(Garbage Collector, Garbage Collection)
@@ -449,5 +449,226 @@ JVM의 Heap 영역에서, 참조하는 변수가 하나도 없는 객체를 주�
  　     
  　     
 ***
+ 　     	
+ 　     	
+> ﻿singleton 만들기 ③
+
+ 　     
+- ﻿Enum Type(열거형) 이용
+	
+: abstract Enum class로부터 구현된다.
+
+: 서로 관련있는 상수들이 모여서 하나의 Enum형을 이룬다.
+
+: 상수, 메서드를 선언할 수 있다.
+
+: 다른 언어에서와 다르게, 자바의 Enum에서는 더 많은 기능을 제공한다.
+
+: 그럼에도 매우 간단하고, 강력하다.
+
+: 아래와 같은 기능들도 제공한다.
+
+﻿![image](https://github.com/inpink/Effective-Java/assets/108166692/361e3876-2311-42c9-84a7-d8321b55af77)
+
+﻿
+
+아래는 Enum Fruits 예시이다.
+
+APPLE, BANANA, ORANGE 3개의 상수가 있으며, 1개의 method가 있다. 물론, 호출 가능하다.
+
+~~~
+public enum Fruits {
+    APPLE, BANANA, ORANGE;
+
+    public void printAnnounce(Fruits fruits) {
+        System.out.println("나는 과일"+fruits);
+    }
+}
+~~~
+~~~
+public static void main(String[] args) {
+        Fruits fruits=Fruits.APPLE;
+
+        fruits.printAnnounce(Fruits.APPLE);
+        fruits.printAnnounce(Fruits.BANANA);
+        fruits.printAnnounce(Fruits.ORANGE);
+    }
+~~~
+﻿자세한 Enum 메서드 호출 방법은, 아래를 참고하자.
 	
 	
+- Enum Type을 이용한 singleton
+
+: Enum Type에서 상수(원소)가 하나라면, 싱글턴이다.
+
+: 자바에서 Enum type을 어떻게 사용하고 있는지 이해하면 "Enum Type을 이용한 singleton"의 이해가 더욱 쉽다.
+ 　     
+ 　     
+1) Enum은 사실 abstract Enum Class를 구현한 "특수한 Type"이다.
+
+2) Enum class는 private 생성자 호출이 불가능하다. "리플렉션으로도 불가능하다" (=리플렉션 공격으로부터도 안전하다)
+
+3) Enum의 상수는, 직렬화/역직렬화 상황에서 추가적인 작업 없이도 싱글톤을 유지해준다.
+
+(Enum 내부의 일반 변수는 아예 "직렬화가 되지 않는다")
+
+4) 대부분의 상황에서는, Enum을 이용하는 것이 싱글턴을 만드는 매우 좋은 방법이다.
+
+5) But, Enum은 상속을 지원하지 않는다(extends 불가). Interface를 구현하는 것은 가능하다.
+![image](https://github.com/inpink/Effective-Java/assets/108166692/3d4e7348-e4a2-47b3-a4be-ffa6cb5fbcbb)
+	
+	
+	
+~~~
+public enum Color {
+RED, GREEN;
+}
+~~~
+﻿
+위 Enum 코드는, 아래 코드(①public field 방식 싱글턴)와 "거의 유사하다"
+ 　     
+ 　     
+static이라는 점을 잊지 말자.
+
+Color.RED, ColorGREEN 이 각각 최초 1회씩 호출될 때,
+
+각각 new Color() 생성자가 호출되며, "데이터 영역"에 적재된다.
+
+이후, Color.RED, ColorGREEN를 다시 호출해도, " new Color() 생성자가 호출되지 않고 이미 생성되었던 "싱글턴 객체"가 반환된다."
+~~~
+public class Color {
+    public static final Color RED = new Color();
+    public static final Color ﻿GREEN = new Color();
+    private Color() { } 
+
+}
+~~~
+﻿
+=> 그렇기에, "상수를 하나만"두면, 그 Enum은 자연스럽게 Singleton이 되는 것이다.
+ 　     
+ 　     
+-﻿사실 Enum 상수는
+![image](https://github.com/inpink/Effective-Java/assets/108166692/99bf9b63-bf89-4455-97d6-bf8c259b0937)
+﻿
+Elvis Enum class의 instance를 반환하는 Method 형태이다.
+
+그러니, 엄연히 따져보면 ①public field 방식보단 ②public method 방식에 더 가까울 것이다.
+
+아래 코드를 보자.
+
+RED와, GREEN은 싱글톤이다.
+~~~
+public class Color {
+    private static final Color RED = new Color(); //static이라 한 번 호출된 이후에 다시 생성자 호출 X
+    private static final Color ﻿GREEN = new Color();
+
+    private Color() { } 
+
+    public static Color RED() { return RED; } //Color의 instance인 싱글톤 객체 RED 반환 
+    public static Color ﻿GREEN() { return ﻿GREEN; }
+}
+~~~
+﻿
+enum이 사실 class라는 것, 그리고 enum 상수는 사실 팩터리 메소드라는 것을 알고 아래 코드를 보면,
+
+코드가 술술 읽힐 것이다.
+ 　     
+ 　     
+- Enum 사용 방법
+
+Enum Elvis는 상수가 2개이므로 싱글톤이 아니다.
+
+INSTANCE, TEST 각각 싱글톤 객체가 생겨버려서, Elvis의 인스턴스가 1개가 아니기 때문이다.
+
+Elvis가 싱글턴이어야 하는거지, 싱글턴 class에서 싱글톤 객체가 아닌 변수를 사용하지 못하는 것이 아니다. (int a)
+~~~
+public enum Elvis {
+    INSTANCE, TEST;
+
+    private int a; //Elvis가 싱글턴이면 되는거지, 변수 사용을 못하는게 아님
+
+    public int getA() {
+        return a;
+    }
+
+    public void setA(int a) {
+        this.a = a;
+    }
+
+    public void leaveTheBuilding() {
+        System.out.println("Whoa baby, I'm outta here!");
+    }
+}
+~~~
+	
+~~~
+public class Main
+{
+    public static void main(String[] args) {
+
+        //enum은 생성자가 private => 외부에서 객체 생성 불가, 리플렉션으로부터도 안전하다.
+        //Elvis e = new Elvis(); //불가능
+
+        //아래와 같이 단 하나만 존재하는 상수를 가져와서 씀.
+        //상수라곤 하지만, 사실 Elvis INSTANCE()임.
+        //같은 상수가 반환하는 것은, "같은 싱글톤 객체"이다.
+        Elvis elvis=Elvis.INSTANCE;
+        System.out.println(elvis); //Elvis Instance반환, ★ 객체 이름은 "INSTANCE"
+
+        //enum 내부에 있는 method는 아래와같이, "상수에 직접" 사용해줄 수 있음
+        //Elvis 객체를 이용해서 method를 사용해줄 수도 있다.
+        //INSTANCE=Instance()=Elvis싱글톤객체  라는 것을 생각하면 이해가 쉬움 
+        Elvis.INSTANCE.leaveTheBuilding();
+        elvis.leaveTheBuilding();
+
+        //싱글턴이 맞을까?
+        elvis.setA(5); 
+
+        Elvis elvis1=Elvis.TEST;
+        elvis1.setA(10);
+
+        System.out.println(elvis.getA()); //5
+        System.out.println(elvis1.getA()); //10
+
+        Elvis elvis3=Elvis.INSTANCE; //같은 INSTANCE를 쓰는 elvis1와 elvis3은 "같은 객체를 참조하고 있다"
+        System.out.println(elvis3.getA()); //5
+
+
+    }
+}
+~~~
+ 　     
+👀 상수를 통해 싱글톤 객체 반환
+
+Elvis elvis=Elvis.INSTANCE; 　     
+ 　     
+ 　     
+👀 싱글톤 객체 출력 시, 객체 이름은 Enum 상수이다.
+
+System.out.println(elvis); => INSTANCE 출력 　     
+ 　     
+ 　     
+👀 Enum method 사용
+
+Elvis.INSTANCE.leaveTheBuilding(); / elvis.leaveTheBuilding(); 　     
+ 　     
+ 　     
+👀 같은 INSTANCE를 쓰는 elvis1와 elvis3은 "같은 객체를 참조하고 있다"
+
+Elvis elvis=Elvis.INSTANCE;
+
+Elvis elvis3=Elvis.INSTANCE; 　     
+
+ 　     
+	 　     
+	 　     
+***
+	
+> ﻿참고 문헌
+	
+﻿https://stackoverflow.com/questions/9735601/what-is-stateless-object-in-java (﻿stateless object) 　     
+﻿https://stackoverflow.com/questions/2302179/mocking-a-singleton-class/2302211#2302211?newreg=d7ceee7a805644f6aa5eba9add068fda (﻿mocking a singleton class using interface) 　     
+﻿https://stackoverflow.com/questions/398953/what-is-the-preferred-throwable-to-use-in-a-private-utility-class-constructor (﻿throwing Exception when private constructor is called by using reflection) 　     
+﻿https://inpa.tistory.com/entry/JAVA-%E2%98%95-%EC%A7%81%EB%A0%AC%ED%99%94Serializable-%EC%99%84%EB%B2%BD-%EB%A7%88%EC%8A%A4%ED%84%B0%ED%95%98%EA%B8%B0 (﻿serializable) 　     
+﻿https://limkydev.tistory.com/66 (﻿Enum)  　     	 　     
+﻿https://github.com/marhan/effective-java-examples/tree/master (﻿Effective Java Source) 　     
