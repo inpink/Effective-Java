@@ -45,7 +45,8 @@ Stateless의 instance가 생성될 때 생성된 이후, 절대 바뀌지 못한
  　     
  　     
 - 싱글턴의 문제점 　     
-전체 프로그램을 통틀어 1개밖에 없기 때문에, 　     
+전체 프
+로그램을 통틀어 1개밖에 없기 때문에, 　     
 싱글턴 클래스의 가짜(mock) 객체를 만들 수 없다. 　     
 따라서, 싱글턴 클래스는 테스트가 어렵다. 　     
  　     
@@ -198,28 +199,22 @@ private Elvis() {
  　     
 ***
  　     
-        　     
-               　     
 > ﻿singleton 만들기 ②
 
- 　     
-        　     
-- ﻿public static final method를 이용하는 방법이다.
-﻿생성자는 private, 유일한 인스턴스는 private static final field, 받아오기는 public static method(getInstance)
-①번과 유사하지만, 외부에서 field에 직접 접근하는 것이 아니라, method를 통해 얻어온다.
+- ﻿public static final method를 이용하는 방법이다. 　     
+﻿생성자는 private, 유일한 인스턴스는 private static final field, 받아오기는 public static method(getInstance) 　     
+①번과 유사하지만, 외부에서 field에 직접 접근하는 것이 아니라, method를 통해 얻어온다. 　     
  　     
  　     
-       ﻿
-1) 생성자를 private로
 
-: 외부에서 접근할 수 없도록 막는다.
+1) 생성자를 private로 　     
+: 외부에서 접근할 수 없도록 막는다. 　     
  　     
  　     
-2) private static final field를 만든다.
+2) private static final field를 만든다. 　     
 
-: 외부에서 직접 접근할 수 없도록 막는다.
-
-: 나머지는 ①번과 유사하므로 설명 PASS
+: 외부에서 직접 접근할 수 없도록 막는다. 　     
+: 나머지는 ①번과 유사하므로 설명 PASS 　     
  　     
  　     
 3) public static method로 해당 field를 받아갈 수 있다.
@@ -314,10 +309,10 @@ public interface Supplier<T> {
      */
     T get();
 }
- ~~~'
+ ~~~
   　     
    　     　     
-  　     ﻿
+
 😀 Supplier을 이용한 대표적인 예시는 "Lazy Evaluation(느린 연산)"이다.
 segment tree lazy propagation와 비슷하다.
 일반적으로 아래와 같이, 메서드를 적어주면 바로 호출되어 버린다.
@@ -328,7 +323,7 @@ test(2,Elivs.getInstance())
 test(3,Elivs.getInstance())
 
 void test(int n, Elvis e){
-  ~~~
+  ~~
 }
  ~~~
   　     
@@ -362,4 +357,97 @@ supplier.get()으로 singleton INSTANCE를 받아온다. 　
 }
  ~~~
  　     
+ 　     
+- ①public static final field vs ②public static method 비교
+
+1) 각각의 장점을 고려해봤을 때, ②method의 장점이 굳이 필요한 게 아니라면 일반적으로 ①field 방식이 더 좋다
+
+2) "직렬화"를 해야 한다면, 아래의 방법을 써야 한다.
+ 　     
+ 　     
+ 　     
+- 직렬화
+
+Java Data -> Byte Stream 으로 "변환"하는 것.
+
+자바의 data를 자바 외부에서도 쓸 수 있게 하기 위함이다.
+
+Stream of Bytes는, 연속적(serial)이라는 특징이 있다.
+ 　     
+ 　     
+다음과 같이 Serializable interface를 구현해서 직렬화시킬 수 있다. (도서 12장도 참고하자)
+
+~~~
+	public class User implements Serializable {
+
+    public static void main(String[] args)  throws  Exception  {
+        //직렬화할 객체 user
+        User user=new User();
+
+        //직렬화 데이터 저장할 파일 path
+        String filePath = "/User/~~/~~.md";
+
+        //Java Data -> Stream of Bytes
+        try (
+                //두 가지 class 모두 필요하다
+                FileOutputStream fos = new FileOutputStream(filePath); //해당 File에 Stream of Bytes 작성하기 위해 사용
+                ObjectOutputStream out = new ObjectOutputStream(fos) //객체를 직렬화하는데 사용 
+        ){
+            out.writeObject(user); //해당 file에 user 객체를 직렬화하여 적기
+
+        } catch (IOException e) { //예외 발생 시 
+            e.printStackTrace();
+        }
+    }
+}
+~~~
+ 　     
+ 　     	
+
+- 역직렬화
+
+Byte Stream -> Java Data
+
+이 때, byte stream으로부터 "새로운 객체"가 생성되게 된다.
+
+"싱글턴"을 유지하기 위해서는, "원래 쓰던 싱글턴 객체"로 변환되도록 해야 한다.
+
+싱글턴인 경우에, 아무 것도 해주지 않고 그냥 직렬화만 한다면, 역직렬화 과정에서 "싱글턴이 깨지게 된다"
+
+=> 아래 방법을 사용하자.
+ 　     
+ 　     
+- 싱글턴 클래스 직렬화(serialize)
+
+1) Serializable을 구현한다.
+
+2) Instance를 반환하는 field는, transient(일시적)이여야 한다.
+
+아래와 같이 transient 키워드를 붙여서, "직렬화 하지 않을 field임"을 명시한다.
+~~~
+public transient int numb = 100;
+~~~
 ﻿
+하지만, final과 static 키워드가 붙은 field는, transient를 붙여도 직렬화를 막지 못한다.
+
+
+3)그래서, private Object readResolve() method를 추가한다.
+
+이는, "역직렬화"시 자동으로 호출된다.
+
+원래의 싱글턴 INSTACNE를 반환하고, "역직렬화된 새로운 객체는 가비지 컬렉터(Garbage Collector)가 삭제하게 된다"
+~~~
+	private Object readResolve() {
+		return INSTANCE;
+	}
+	~~~
+	 　     
+﻿ 　     
+- 가비지 컬렉터(Garbage Collector, Garbage Collection)
+
+JVM의 Heap 영역에서, 참조하는 변수가 하나도 없는 객체를 주기적으로 탐색하여 삭제한다.
+ 　     
+ 　     
+***
+	
+	
